@@ -7,4 +7,5 @@ import (
 
 func RegisterUserRoutes(r *mux.Router){
 	r.HandleFunc("/signup",controller.SignupHandler).Methods("POST")
+	r.HandleFunc("/login",controller.LoginHandler).Methods("POST")
 }

@@ -1,1 +1,12 @@
 .env
+# Go build artifacts
+*.exe
+*.out
+*.test
+watchlist.exe
+# Dependency directories
+/vendor/
+
+# IDE/editor stuff
+.vscode/
+.idea/

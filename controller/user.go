@@ -9,6 +9,7 @@ import (
 
 	"github.com/karan/watchlist/config"
 	"github.com/karan/watchlist/model"
+	"github.com/karan/watchlist/services"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -78,6 +79,43 @@ json.NewDecoder(r.Body) - Creates a new decoder that reads from the request body
 	fmt.Println("response: ")
 	fmt.Println(response)
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+
+}
+
+func LoginHandler (w http.ResponseWriter , r *http.Request){
+	if r.Method !="POST"{
+		http.Error(w,"Only POST method allowed",http.StatusMethodNotAllowed)
+	}
+	var user model.User;
+	if err := json.NewDecoder(r.Body).Decode(&user); err!=nil{
+		http.Error(w,"Invalid json",http.StatusBadRequest)
+		return;
+	} 
+	ctx,cancel := context.WithTimeout(context.Background(),10*time.Second)
+	defer cancel()
+	userCollection := config.GetCollection("users")
+	var existingUser model.User
+	if err := userCollection.FindOne(ctx , bson.M{"email":user.Email}).Decode(&existingUser) ; err !=nil{
+		fmt.Println(err)
+		http.Error(w,"User not found",http.StatusNotFound);
+		return 
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(existingUser.Password) , []byte (user.Password)) ; err!=nil {
+		http.Error(w,"Password incorrect",http.StatusForbidden)
+		return ;
+	}
+	
+	token , err := services.CreateToken(existingUser.ID.Hex())
+	if err!=nil {
+		fmt.Println(err)
+		http.Error(w,"something went wrong",http.StatusBadGateway)
+		return 
+	}
+	response := map[string] string {
+		"token":token,
+		"message":"User authentication successful",
+	}
 	json.NewEncoder(w).Encode(response)
 
 }
