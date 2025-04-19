@@ -247,6 +247,7 @@ This function registers all routes in the application. It:
 3. Registers watchlist routes with the authenticated subrouter
 
 ### 3. Authentication Middleware (middleware/authMiddleware.go)
+---
 
 ```go
 func AuthMiddleware(next http.Handler) http.Handler {
@@ -268,15 +269,76 @@ func AuthMiddleware(next http.Handler) http.Handler {
 }
 ```
 
-This middleware function:
-1. Gets the Authorization header from the request
-2. Checks if it starts with "Bearer"
-3. Extracts the token
-4. Verifies the token using the services.VerifyToken function
-5. If the token is valid, it adds the user ID to the request context
-6. Calls the next handler with the updated request
+---
 
-### 4. JWT Token Creation and Verification (services/jwt.go)
+### 🔹 Function Signature
+```go
+func AuthMiddleware(next http.Handler) http.Handler
+```
+This defines a middleware function for HTTP requests. It accepts the `next` handler in the middleware chain and returns a new `http.Handler` that wraps the provided handler with authentication logic.
+
+---
+
+### 🔹 Extracting the Authorization Header
+```go
+authHeader := r.Header.Get("Authorization")
+```
+The middleware retrieves the `Authorization` header from the incoming HTTP request. This is where the Bearer token is expected to be passed by the client.
+
+---
+
+### 🔹 Validating Header Presence and Format
+```go
+if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer") {
+    http.Error(w, "Missing or invalid token", http.StatusUnauthorized)
+    return
+}
+```
+Checks two things:
+- Whether the `Authorization` header is missing (empty string).
+- Whether it starts with the expected `"Bearer"` prefix.
+
+If either check fails, it sends an `HTTP 401 Unauthorized` response and halts further processing.
+
+---
+
+### 🔹 Extracting the Token from the Header
+```go
+tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+```
+Removes the `"Bearer "` prefix and extracts the raw token string from the header. This token will be passed to the verification service.
+
+---
+
+### 🔹 Verifying the Token
+```go
+userId, err := services.VerifyToken(tokenString)
+if err != nil {
+    http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+    return
+}
+```
+The extracted token is passed to the `services.VerifyToken` function, which validates it and returns the `userId` if successful. If the token is invalid or expired, a `401 Unauthorized` is returned along with the error message.
+
+---
+
+### 🔹 Adding User ID to the Request Context
+```go
+ctx := context.WithValue(r.Context(), UserIDKey, userId)
+```
+Once the token is verified, the user's ID is stored in the request context. This allows any downstream handlers to access the user ID via `r.Context()`.
+
+---
+
+### 🔹 Proceeding to the Next Handler
+```go
+next.ServeHTTP(w, r.WithContext(ctx))
+```
+The middleware then calls the next HTTP handler in the chain, passing along the updated request with the user ID context attached.
+
+---
+
+### 4. JWT Token Creation and Verification (`services/jwt.go`)
 
 ```go
 func CreateToken(userId string) (string, error) {
@@ -314,9 +376,27 @@ func VerifyToken(tokenString string) (string, error) {
 }
 ```
 
-These functions:
-1. CreateToken: Creates a new JWT token with the user ID and expiration time (24 hours)
-2. VerifyToken: Parses and verifies the token, then extracts the user ID from the claims
+---
+
+#### `CreateToken`
+
+1. Creates a new JWT token using the HMAC SHA-256 signing method (`jwt.SigningMethodHS256`).
+2. Sets the claims inside the token:
+   - `"userId"`: the ID of the user.
+   - `"exp"`: the expiration time, which is set to 24 hours from the time of creation.
+3. Signs the token using the `secretKey`.
+4. Returns the signed token string, or an error if signing fails.
+
+#### `VerifyToken`
+
+1. Parses the JWT token string using `jwt.Parse`.
+2. Checks that the token's signing method is HMAC (`jwt.SigningMethodHMAC`).
+3. If parsing fails or the token is invalid (e.g., expired or tampered), it returns an error.
+4. Extracts the claims from the token using `jwt.MapClaims`.
+5. Retrieves the `"userId"` from the claims. If not present or invalid, returns an error.
+6. If successful, returns the extracted `userId`.
+
+---
 
 ### 5. Database Connection (config/db.go)
 
