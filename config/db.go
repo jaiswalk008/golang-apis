@@ -38,5 +38,5 @@ func ConnectDB(){
 
 }
 func GetCollection(collectionName string) *mongo.Collection {
-    return DB.Database("watchlist").Collection(collectionName)
+    return DB.Database("mongodbapi").Collection(collectionName)
 }

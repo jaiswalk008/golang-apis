@@ -7,4 +7,5 @@ import (
 
 func WatchlistRoutes(r *mux.Router) {
 	r.HandleFunc("/watchlist",controller.AddWatchlistHandler).Methods("POST")
+	r.HandleFunc("/watchlist",controller.GetAllWatchlist).Methods("GET")
 }
