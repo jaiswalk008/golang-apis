@@ -8,4 +8,6 @@ import (
 func WatchlistRoutes(r *mux.Router) {
 	r.HandleFunc("/watchlist",controller.AddWatchlistHandler).Methods("POST")
 	r.HandleFunc("/watchlist",controller.GetAllWatchlist).Methods("GET")
+	r.HandleFunc("/watchlist/{id}",controller.UpdateWatchList).Methods("PATCH")
+	r.HandleFunc("/watchlist/{id}",controller.DeleteWatchlist).Methods("DELETE")
 }
